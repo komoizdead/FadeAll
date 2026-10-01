@@ -170,7 +170,7 @@ namespace FadeAll
         public const int VK_NEXT = 0x22;
         public const int VK_G = 0x47;
         public const int VK_INSERT = 0x2D;
-        public const int VK_SCROLL = 0x91;
+        public const int VK_Q = 0x51;
 
         public static int GetExStyle(IntPtr hWnd)
         {
@@ -600,7 +600,7 @@ namespace FadeAll
             _toggleItem = new ToolStripMenuItem("Fade all windows (click pill / Ctrl+Alt+H)", null, delegate { Toggle(); });
             var shrinkItem = new ToolStripMenuItem("Cycle window size (Size button): 7in / 3in / full", null, delegate { CycleSizeCurrentWindow(); });
             var stepItem = new ToolStripMenuItem("Step opacity down (PageUp)", null, delegate { _session.StepLevel(); });
-            var stepUpItem = new ToolStripMenuItem("Step opacity up (Scroll Lock)", null, delegate { _session.StepUpLevel(); });
+            var stepUpItem = new ToolStripMenuItem("Step opacity up (Q)", null, delegate { _session.StepUpLevel(); });
             var jumpItem = new ToolStripMenuItem("Hide / show all (PageDown)", null, delegate { _session.JumpLevel(); });
             var ghostItem = new ToolStripMenuItem("Ghost last window (G)", null, delegate { GhostCurrentWindow(); });
             var stackItem = new ToolStripMenuItem("Stack windows in a 3x3 grid (Insert)", null, delegate { ToggleStack(); });
@@ -628,7 +628,7 @@ namespace FadeAll
             _menu.Items.Add(exitItem);
 
             _tip.InitialDelay = 300;
-            _tip.SetToolTip(this, "Left: fade / restore all  |  PageUp / Scroll Lock: step opacity down / up  |  PageDown: hide / show  |  G: ghost last window  |  Insert: stack 3x3  |  Size: 7in / 3in / full  |  Grip: drag to size by hand");
+            _tip.SetToolTip(this, "Left: fade / restore all  |  PageUp / Q: step opacity down / up  |  PageDown: hide / show  |  G: ghost last window  |  Insert: stack 3x3  |  Size: 7in / 3in / full  |  Grip: drag to size by hand");
         }
 
         protected override CreateParams CreateParams
@@ -650,7 +650,7 @@ namespace FadeAll
 
             _kbHook = Native.SetWindowsHookEx(Native.WH_KEYBOARD_LL, _keyProc, Native.GetModuleHandle(null), 0);
             if (_kbHook == IntPtr.Zero)
-                _tip.SetToolTip(this, "The PageUp / PageDown / Scroll Lock / Insert / G keys could not be watched. Click the pill and use the right-click menu instead.");
+                _tip.SetToolTip(this, "The PageUp / PageDown / Q / Insert / G keys could not be watched. Click the pill and use the right-click menu instead.");
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -689,15 +689,15 @@ namespace FadeAll
                     int vk = (int)data.vkCode;
                     if (message == Native.WM_KEYDOWN || message == Native.WM_SYSKEYDOWN)
                     {
-                        if ((vk == Native.VK_PRIOR || vk == Native.VK_NEXT || vk == Native.VK_G || vk == Native.VK_SCROLL || vk == Native.VK_INSERT)
+                        if ((vk == Native.VK_PRIOR || vk == Native.VK_NEXT || vk == Native.VK_G || vk == Native.VK_Q || vk == Native.VK_INSERT)
                             && !_keyDown.Contains(vk))
                         {
                             _keyDown.Add(vk);
                             if (!ModifierHeld()) HandleBareKey(vk);
                         }
-                        if ((vk == Native.VK_SCROLL || vk == Native.VK_INSERT) && !ModifierHeld())
+                        if (vk == Native.VK_INSERT && !ModifierHeld())
                         {
-                            // Ours while bare: swallowing keeps scroll lock / overwrite mode from ever toggling.
+                            // Ours while bare: swallowing keeps overwrite mode from ever toggling.
                             _swallowed.Add(vk);
                             return (IntPtr)1;
                         }
@@ -715,7 +715,7 @@ namespace FadeAll
         private void HandleBareKey(int vk)
         {
             if (vk == Native.VK_PRIOR) _session.StepLevel();
-            else if (vk == Native.VK_SCROLL) _session.StepUpLevel();
+            else if (vk == Native.VK_Q) _session.StepUpLevel();
             else if (vk == Native.VK_NEXT) _session.JumpLevel();
             else if (vk == Native.VK_G) GhostCurrentWindow();
             else if (vk == Native.VK_INSERT) ToggleStack();
@@ -1352,11 +1352,11 @@ namespace FadeAll
                 "Keyboard shortcuts (active while FadeAll runs, in every app):\r\n" +
                 "  -  PageUp: step down one level - 100% to 75% to 50% to 25% to hidden, then back to 100%.\r\n" +
                 "  -  PageDown: jump straight between full (100%) and hidden.\r\n" +
-                "  -  Scroll Lock: step up one level - hidden to 25% to 50% to 75% to 100% - and stops at full.\r\n" +
+                "  -  Q: step up one level - hidden to 25% to 50% to 75% to 100% - and stops at full.\r\n" +
                 "  -  G: ghost the window you last used - it becomes see-through so you can read what is behind it. Press G again to undo.\r\n" +
                 "  -  Insert: stack your open windows into a 3 x 3 grid - up to 9, most recently used first. Press Insert again to put them back where they were. The pill floats on top of the grid; drag it aside if it covers a window.\r\n" +
-                "  -  FadeAll only listens in the background, so PageUp / PageDown still reach other apps and g still types there. The flip side: the action fires at the same time - typing the letter g also ghosts / un-ghosts your last window.\r\n" +
-                "  -  Scroll Lock and Insert are taken over while FadeAll runs - their normal functions are off (no scroll lock, no overwrite mode), and only the bare keys are captured: Ctrl+Insert and Shift+Insert still work in other apps.\r\n" +
+                "  -  FadeAll only listens in the background, so PageUp / PageDown still reach other apps and g / q still type there. The flip side: the action fires at the same time - typing the letter g also ghosts / un-ghosts your last window, and typing q also steps the opacity up (it stops at 100%, so stray q presses cannot hide anything).\r\n" +
+                "  -  Insert is taken over while FadeAll runs - its normal function is off (no overwrite mode), and only the bare key is captured: Ctrl+Insert and Shift+Insert still work in other apps.\r\n" +
                 "  -  Holding Ctrl, Alt, Shift or Windows suppresses the action, so shortcuts like Ctrl+PageUp are left alone.\r\n\r\n" +
                 "Click the Size button on the right to cycle the window you were last using:\r\n" +
                 "  -  First click: 7 x 7 inches.\r\n" +

@@ -10,7 +10,7 @@ Click the pill (or press `Ctrl+Alt+H`) and every window fades away. Hover the pi
 
 - **Fade / restore everything** - one click hides all windows, another click restores them.
 - **Hover to peek** - while hidden, hovering the pill shows your screen; move the mouse away and it fades out again.
-- **Opacity steps** - `PageUp` dims one step (100% down to 0%, then wraps), `Scroll Lock` steps back up (stops at 100%), `PageDown` jumps straight between fully visible and fully hidden.
+- **Opacity steps** - `PageUp` dims one step (100% down to 0%, then wraps), `Q` steps back up (stops at 100%), `PageDown` jumps straight between fully visible and fully hidden.
 - **Ghost one window** - `G` makes just the last-focused window semi-transparent.
 - **Stack windows** - `Insert` tiles up to 9 windows in a 3x3 grid; press it again to put every window back exactly where it was.
 - **Resize the last window** - the **Size** button cycles 7x7 in -> 3x3 in -> full screen. The grip on the right end of the pill resizes by hand (drag right/down to grow, left/up to shrink).
@@ -21,7 +21,7 @@ Click the pill (or press `Ctrl+Alt+H`) and every window fades away. Hover the pi
 | --- | --- |
 | Pill click or `Ctrl+Alt+H` | Hide / restore all windows |
 | `PageUp` | Opacity down one step (wraps at 0%) |
-| `Scroll Lock` | Opacity up one step (stops at 100%) |
+| `Q` | Opacity up one step (stops at 100%) |
 | `PageDown` | Toggle fully visible / fully hidden |
 | `G` | Ghost the last-focused window |
 | `Insert` | Stack / unstack up to 9 windows in a 3x3 grid |
@@ -30,8 +30,8 @@ Right-click the pill for this same list, plus "Exit" and "How it works (full det
 
 Key notes:
 
-- `PageUp`, `PageDown` and `G` **pass through** - scrolling and typing still work normally; FadeAll just acts alongside them.
-- `Scroll Lock` and `Insert` are **taken over** while FadeAll runs: the scroll-lock toggle and overwrite mode never fire. Only the bare keys are captured, so `Ctrl+Insert` / `Shift+Insert` (copy / paste) still work in other apps.
+- `PageUp`, `PageDown`, `Q` and `G` **pass through** - scrolling and typing still work normally; FadeAll just acts alongside them. The flip side: typing a plain `g` also ghosts your last window, and typing a plain `q` also steps the opacity up (it stops at 100%, so a stray `q` cannot hide anything).
+- `Insert` is **taken over** while FadeAll runs: overwrite mode never fires. Only the bare key is captured, so `Ctrl+Insert` / `Shift+Insert` (copy / paste) still work in other apps.
 - F1-F12 are deliberately left alone.
 
 ## Get FadeAll
