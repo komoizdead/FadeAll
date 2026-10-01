@@ -1,5 +1,7 @@
 # FadeAll
 
+<p align="center"><img src="assets/pill.png" alt="The FadeAll pill: a slim dark bar with 'Fade all windows', a Size button and a drag grip" width="592"></p>
+
 A tiny Windows pill that fades all your open windows out of sight - and brings them back when you need them.
 
 Click the pill (or press `Ctrl+Alt+H`) and every window fades away. Hover the pill to peek at your screen; click again to bring everything back exactly as it was.
