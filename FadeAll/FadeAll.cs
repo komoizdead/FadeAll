@@ -543,7 +543,7 @@ namespace FadeAll
             var stepItem = new ToolStripMenuItem("Step opacity down", null, delegate { _session.StepLevel(); });
             var stepUpItem = new ToolStripMenuItem("Step opacity up", null, delegate { _session.StepUpLevel(); });
             var jumpItem = new ToolStripMenuItem("Hide / show all", null, delegate { _session.JumpLevel(); });
-            var unfadeItem = new ToolStripMenuItem("Unfade all windows", null, delegate { _session.End(); });
+            var unfadeItem = new ToolStripMenuItem("Unfade all windows", null, delegate { UnfadeAll(); });
             var ghostItem = new ToolStripMenuItem("Ghost last window", null, delegate { GhostCurrentWindow(); });
             var stackItem = new ToolStripMenuItem("Stack windows in a 3x3 grid", null, delegate { ToggleStack(); });
             var peekInfo = new ToolStripMenuItem("Hover the pill: peek while faded");
@@ -587,9 +587,9 @@ namespace FadeAll
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             _tracker.Stop();
+            _session.RestoreImmediately();
             RestoreGhosts();
             if (_stacked.Count > 0) UnstackWindows();
-            _session.RestoreImmediately();
             base.OnFormClosing(e);
         }
 
@@ -978,6 +978,13 @@ namespace FadeAll
             _ghosts.Clear();
         }
 
+        private void UnfadeAll()
+        {
+            _session.End();
+            _session.RestoreImmediately();
+            RestoreGhosts();
+        }
+
         private static void RestoreGhost(IntPtr hWnd, GhostState ghost)
         {
             Native.TrySetExStyle(hWnd, ghost.OriginalExStyle);
@@ -1218,7 +1225,7 @@ namespace FadeAll
                 "  -  Step opacity down: 100% to 75% to 50% to 25% to hidden, then back to 100%.\r\n" +
                 "  -  Step opacity up: hidden to 25% to 50% to 75% to 100% - and stops at full, so a stray click cannot hide anything.\r\n" +
                 "  -  Hide / show all: jump straight between full (100%) and hidden.\r\n" +
-                "  -  Unfade all windows: every window straight back to full opacity, from any dimmed level. Works no matter how far down you stepped.\r\n" +
+                "  -  Unfade all windows: every window straight back to full opacity, from any dimmed level. It also un-ghosts windows ghosted with Ghost last window, so everything ends up fully readable.\r\n" +
                 "  -  Ghost last window: the window you last used becomes see-through so you can read what is behind it. Run it again to undo.\r\n" +
                 "  -  Stack windows in a 3 x 3 grid: up to 9 windows, most recently used first. Run it again to put them back where they were. The pill floats on top of the grid; drag it aside if it covers a window.\r\n\r\n" +
                 "Click the Size button on the right of the pill for the same size cycle.\r\n\r\n" +

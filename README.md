@@ -24,7 +24,7 @@ Right-click the pill and every action is one click away:
 - **Step opacity down** - 100% -> 75% -> 50% -> 25% -> hidden, then wraps.
 - **Step opacity up** - hidden -> 25% -> 50% -> 75% -> 100% (stops there).
 - **Hide / show all** - jump straight between fully visible and fully hidden.
-- **Unfade all windows** - every window straight back to full opacity, whatever the current level.
+- **Unfade all windows** - every window straight back to full opacity, whatever the current level; ghosted windows come back solid too.
 - **Ghost last window** - make the last-focused window semi-transparent; run it again to undo.
 - **Stack windows in a 3x3 grid** - tile up to 9 windows; run it again to unstack.
 - **How it works (full details)** - the full in-app help.

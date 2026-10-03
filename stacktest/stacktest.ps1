@@ -1,6 +1,7 @@
 param(
   [Parameter(Mandatory=$true)][string]$cmd,
-  [int]$n = 6
+  [int]$n = 6,
+  [string]$sub = 'Stack'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -573,7 +574,7 @@ if ($cmd -eq 'msaaact') {
   Write-Output ("DD=" + $dd.Hex + " RECT=" + $dd.L + "," + $dd.T + "," + $dd.R + "," + $dd.B)
 
   Write-Output ("T=" + (Get-Date -Format 'HH:mm:ss.f') + " ACTING")
-  $act = [MS]::Act($dd.H, 'Stack')
+  $act = [MS]::Act($dd.H, $sub)
   Write-Output ("MSAA_" + $act)
   [ST]::Sleep(700)
   Write-Output ("T=" + (Get-Date -Format 'HH:mm:ss.f') + " ACT_DONE")
