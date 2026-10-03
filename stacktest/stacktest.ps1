@@ -615,6 +615,90 @@ if ($cmd -eq 'msaaact') {
   exit 0
 }
 
+if ($cmd -eq 'opacity') {
+  $fadePid = Get-FadePid
+  $wins = Get-Wins
+  $pill = Find-Pill $wins $fadePid
+  if (-not $pill) { Write-Output 'PILL=NOTFOUND'; exit 1 }
+  $px = [int]($pill.L + 100)
+  $py = [int]($pill.T + 20)
+  $awayX = [int]($pill.L - 400)
+  $awayY = 760
+  Write-Output ("PILL=" + $pill.Hex + " RECT=" + $pill.L + "," + $pill.T + "," + $pill.R + "," + $pill.B + " PID=" + $fadePid)
+
+  foreach ($w in $wins) {
+    if ($w.Pid -eq $fadePid -and $w.Title -eq 'How FadeAll works') {
+      Write-Output 'HELP_DIALOG_CLOSING=1'
+      [ST]::Press(0x0D)
+      [ST]::Sleep(500)
+    }
+  }
+
+  function Open-Menu {
+    [ST]::MoveClick($px, $py, $true)
+    [void][ST]::SetCursorPos($awayX, $awayY)
+    $dd = $null
+    for ($i = 0; $i -lt 40; $i++) {
+      [ST]::Sleep(100)
+      $dd = Find-Menu (Get-Wins) $fadePid $pill.Hex
+      if ($dd) { break }
+    }
+    return $dd
+  }
+
+  function Act-Check($dd, [string]$sub) {
+    $act = [MS]::Act($dd.H, $sub)
+    Write-Host ("MSAA_" + $act)
+    for ($i = 0; $i -lt 15; $i++) {
+      [ST]::Sleep(200)
+      $still = $false
+      foreach ($w in (Get-Wins)) { if ($w.Hex -eq $dd.Hex) { $still = $true; break } }
+      if (-not $still) { return $false }
+    }
+    return $true
+  }
+
+  $open = Find-Menu $wins $fadePid $pill.Hex
+  if ($open) { Write-Output ("STALE_MENU=" + $open.Hex + " CLOSING=1"); [ST]::Press(0x1B); [ST]::Sleep(500) }
+
+  $probe = Open-Menu
+  if (-not $probe) { Write-Output 'MENU=NOTFOUND'; exit 1 }
+  Write-Output ("T=" + (Get-Date -Format 'HH:mm:ss.f') + " PROBE_MENU=" + $probe.Hex)
+  [ST]::Sleep(400)
+  $dump = [MS]::Dump($probe.H)
+  Write-Output ("DUMP_BEGIN`n" + $dump + "`nDUMP_END")
+  $needRestore = $dump.Contains('Restore all windows')
+  [ST]::Press(0x1B)
+  [ST]::Sleep(400)
+
+  if ($needRestore) {
+    Write-Output 'NORMALIZE=RESTORE'
+    $dd = Open-Menu
+    if (-not $dd) { Write-Output 'MENU=NOTFOUND_NORM'; exit 1 }
+    [ST]::Sleep(400)
+    if (Act-Check $dd 'Restore all windows') { [ST]::Press(0x1B); [ST]::Sleep(300); Write-Output 'NORMALIZE_FAILED=1'; exit 1 }
+    Write-Output 'NORMALIZED=100'
+  } else {
+    Write-Output 'NORMALIZED=ALREADY_FULL'
+  }
+
+  for ($s = 1; $s -le $n; $s++) {
+    $dd = Open-Menu
+    if (-not $dd) { Write-Output ("MENU=NOTFOUND_STEP" + $s); exit 1 }
+    [ST]::Sleep(400)
+    if (Act-Check $dd 'Step opacity down') { [ST]::Press(0x1B); [ST]::Sleep(300); Write-Output ("STEPFAIL=" + $s); exit 1 }
+    Write-Output ("STEP_" + $s + "=OK")
+  }
+
+  Start-Sleep -Milliseconds 400
+  $left = Find-Menu (Get-Wins) $fadePid $pill.Hex
+  if ($left) { [ST]::Press(0x1B); [ST]::Sleep(300) }
+  [void][ST]::SetCursorPos($awayX, $awayY)
+  Write-Output ("CURSOR_PARKED=" + [ST]::CursorStr())
+  Write-Output ("OPACITY_DONE=1 n=" + $n)
+  exit 0
+}
+
 if ($cmd -eq 'close') {
   $closed = 0
   foreach ($w in (Get-Wins)) { if ($w.Title -like 'STACKTEST *') { [ST]::CloseWin($w.H); $closed++ } }
