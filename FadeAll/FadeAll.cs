@@ -58,29 +58,6 @@ namespace FadeAll
         public static extern int DwmGetWindowAttribute(IntPtr hWnd, int attribute, out int value, int size);
 
         [DllImport("user32.dll")]
-        public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint modifiers, uint virtualKey);
-
-        [DllImport("user32.dll")]
-        public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
-
-        public delegate IntPtr LowLevelKeyboardProc(int code, IntPtr wParam, IntPtr lParam);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        public static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc callback, IntPtr module, uint threadId);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        public static extern bool UnhookWindowsHookEx(IntPtr hook);
-
-        [DllImport("user32.dll")]
-        public static extern IntPtr CallNextHookEx(IntPtr hook, int code, IntPtr wParam, IntPtr lParam);
-
-        [DllImport("user32.dll")]
-        public static extern short GetAsyncKeyState(int virtualKey);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-        public static extern IntPtr GetModuleHandle(string moduleName);
-
-        [DllImport("user32.dll")]
         public static extern IntPtr GetForegroundWindow();
 
         [DllImport("user32.dll")]
@@ -128,16 +105,6 @@ namespace FadeAll
             public uint dwFlags;
         }
 
-        [StructLayout(LayoutKind.Sequential)]
-        public struct KBDLLHOOKSTRUCT
-        {
-            public uint vkCode;
-            public uint scanCode;
-            public uint flags;
-            public uint time;
-            public IntPtr extraInfo;
-        }
-
         public const int GWL_EXSTYLE = -20;
         public const int WS_EX_TOOLWINDOW = 0x00000080;
         public const int WS_EX_TRANSPARENT = 0x00000020;
@@ -145,32 +112,12 @@ namespace FadeAll
         public const uint LWA_COLORKEY = 0x00000001u;
         public const uint LWA_ALPHA = 0x00000002u;
         public const int DWMWA_CLOAKED = 14;
-        public const int WM_HOTKEY = 0x0312;
         public const int SW_MAXIMIZE = 3;
         public const int SW_RESTORE = 9;
         public const uint SWP_NOZORDER = 0x0004u;
         public const uint SWP_NOACTIVATE = 0x0010u;
         public const uint SWP_NOSENDCHANGING = 0x0400u;
         public const uint MONITOR_DEFAULTTONEAREST = 0x00000002u;
-        public const uint MOD_ALT = 0x0001u;
-        public const uint MOD_CONTROL = 0x0002u;
-        public const uint MOD_NOREPEAT = 0x4000u;
-        public const int WH_KEYBOARD_LL = 13;
-        public const int WM_KEYDOWN = 0x0100;
-        public const int WM_KEYUP = 0x0101;
-        public const int WM_SYSKEYDOWN = 0x0104;
-        public const int WM_SYSKEYUP = 0x0105;
-        public const uint LLKHF_INJECTED = 0x00000010u;
-        public const int VK_SHIFT = 0x10;
-        public const int VK_CONTROL = 0x11;
-        public const int VK_MENU = 0x12;
-        public const int VK_LWIN = 0x5B;
-        public const int VK_RWIN = 0x5C;
-        public const int VK_PRIOR = 0x21;
-        public const int VK_NEXT = 0x22;
-        public const int VK_G = 0x47;
-        public const int VK_INSERT = 0x2D;
-        public const int VK_Q = 0x51;
 
         public static int GetExStyle(IntPtr hWnd)
         {
@@ -514,7 +461,6 @@ namespace FadeAll
 
     internal sealed class PillForm : Form
     {
-        private const int HotkeyId = 0x0A11;
         private const int GhostAlpha = 128;
         private const int StatusWidth = 232;
         private const int ButtonWidth = 48;
@@ -552,10 +498,6 @@ namespace FadeAll
         private readonly Dictionary<IntPtr, int> _sizeSteps = new Dictionary<IntPtr, int>();
         private readonly Dictionary<IntPtr, GhostState> _ghosts = new Dictionary<IntPtr, GhostState>();
         private readonly Dictionary<IntPtr, StackSnap> _stacked = new Dictionary<IntPtr, StackSnap>();
-        private readonly Native.LowLevelKeyboardProc _keyProc;
-        private readonly HashSet<int> _keyDown = new HashSet<int>();
-        private readonly HashSet<int> _swallowed = new HashSet<int>();
-        private IntPtr _kbHook = IntPtr.Zero;
         private IntPtr _lastWindow = IntPtr.Zero;
         private bool _overButton;
         private bool _overGrip;
@@ -587,7 +529,6 @@ namespace FadeAll
             using (var self = Process.GetCurrentProcess())
                 _myProcessId = (uint)self.Id;
 
-            _keyProc = KeyboardHookCallback;
             _session = new FadeSession(OnSessionChanged);
 
             Rectangle work = Screen.PrimaryScreen.WorkingArea;
@@ -597,13 +538,13 @@ namespace FadeAll
             _tracker.Tick += delegate { TrackForeground(); };
             _tracker.Start();
 
-            _toggleItem = new ToolStripMenuItem("Fade all windows (click pill / Ctrl+Alt+H)", null, delegate { Toggle(); });
+            _toggleItem = new ToolStripMenuItem("Fade all windows (click pill)", null, delegate { Toggle(); });
             var shrinkItem = new ToolStripMenuItem("Cycle window size (Size button): 7in / 3in / full", null, delegate { CycleSizeCurrentWindow(); });
-            var stepItem = new ToolStripMenuItem("Step opacity down (PageUp)", null, delegate { _session.StepLevel(); });
-            var stepUpItem = new ToolStripMenuItem("Step opacity up (Q)", null, delegate { _session.StepUpLevel(); });
-            var jumpItem = new ToolStripMenuItem("Hide / show all (PageDown)", null, delegate { _session.JumpLevel(); });
-            var ghostItem = new ToolStripMenuItem("Ghost last window (G)", null, delegate { GhostCurrentWindow(); });
-            var stackItem = new ToolStripMenuItem("Stack windows in a 3x3 grid (Insert)", null, delegate { ToggleStack(); });
+            var stepItem = new ToolStripMenuItem("Step opacity down", null, delegate { _session.StepLevel(); });
+            var stepUpItem = new ToolStripMenuItem("Step opacity up", null, delegate { _session.StepUpLevel(); });
+            var jumpItem = new ToolStripMenuItem("Hide / show all", null, delegate { _session.JumpLevel(); });
+            var ghostItem = new ToolStripMenuItem("Ghost last window", null, delegate { GhostCurrentWindow(); });
+            var stackItem = new ToolStripMenuItem("Stack windows in a 3x3 grid", null, delegate { ToggleStack(); });
             var peekInfo = new ToolStripMenuItem("Hover the pill: peek while faded");
             peekInfo.Enabled = false;
             var moveInfo = new ToolStripMenuItem("Drag the pill: move it");
@@ -628,7 +569,7 @@ namespace FadeAll
             _menu.Items.Add(exitItem);
 
             _tip.InitialDelay = 300;
-            _tip.SetToolTip(this, "Left: fade / restore all  |  PageUp / Q: step opacity down / up  |  PageDown: hide / show  |  G: ghost last window  |  Insert: stack 3x3  |  Size: 7in / 3in / full  |  Grip: drag to size by hand");
+            _tip.SetToolTip(this, "Left: fade / restore all  |  Right-click: menu with every action  |  Size: 7in / 3in / full  |  Grip: drag to size by hand");
         }
 
         protected override CreateParams CreateParams
@@ -641,93 +582,13 @@ namespace FadeAll
             }
         }
 
-        protected override void OnHandleCreated(EventArgs e)
-        {
-            base.OnHandleCreated(e);
-            if (!Native.RegisterHotKey(Handle, HotkeyId,
-                Native.MOD_CONTROL | Native.MOD_ALT | Native.MOD_NOREPEAT, (uint)Keys.H))
-                _tip.SetToolTip(this, "Ctrl+Alt+H is taken by another app. Click the pill instead. Everything else still works.");
-
-            _kbHook = Native.SetWindowsHookEx(Native.WH_KEYBOARD_LL, _keyProc, Native.GetModuleHandle(null), 0);
-            if (_kbHook == IntPtr.Zero)
-                _tip.SetToolTip(this, "The PageUp / PageDown / Q / Insert / G keys could not be watched. Click the pill and use the right-click menu instead.");
-        }
-
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            Native.UnregisterHotKey(Handle, HotkeyId);
-            if (_kbHook != IntPtr.Zero)
-            {
-                Native.UnhookWindowsHookEx(_kbHook);
-                _kbHook = IntPtr.Zero;
-            }
             _tracker.Stop();
             RestoreGhosts();
             if (_stacked.Count > 0) UnstackWindows();
             _session.RestoreImmediately();
             base.OnFormClosing(e);
-        }
-
-        protected override void WndProc(ref Message m)
-        {
-            if (m.Msg == Native.WM_HOTKEY && m.WParam.ToInt32() == HotkeyId)
-            {
-                Toggle();
-                return;
-            }
-            base.WndProc(ref m);
-        }
-
-        private IntPtr KeyboardHookCallback(int code, IntPtr wParam, IntPtr lParam)
-        {
-            if (code >= 0)
-            {
-                int message = wParam.ToInt32();
-                var data = (Native.KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Native.KBDLLHOOKSTRUCT));
-                if ((data.flags & Native.LLKHF_INJECTED) == 0)
-                {
-                    int vk = (int)data.vkCode;
-                    if (message == Native.WM_KEYDOWN || message == Native.WM_SYSKEYDOWN)
-                    {
-                        if ((vk == Native.VK_PRIOR || vk == Native.VK_NEXT || vk == Native.VK_G || vk == Native.VK_Q || vk == Native.VK_INSERT)
-                            && !_keyDown.Contains(vk))
-                        {
-                            _keyDown.Add(vk);
-                            if (!ModifierHeld()) HandleBareKey(vk);
-                        }
-                        if (vk == Native.VK_INSERT && !ModifierHeld())
-                        {
-                            // Ours while bare: swallowing keeps overwrite mode from ever toggling.
-                            _swallowed.Add(vk);
-                            return (IntPtr)1;
-                        }
-                    }
-                    else if (message == Native.WM_KEYUP || message == Native.WM_SYSKEYUP)
-                    {
-                        _keyDown.Remove(vk);
-                        if (_swallowed.Remove(vk)) return (IntPtr)1;
-                    }
-                }
-            }
-            return Native.CallNextHookEx(_kbHook, code, wParam, lParam);
-        }
-
-        private void HandleBareKey(int vk)
-        {
-            if (vk == Native.VK_PRIOR) _session.StepLevel();
-            else if (vk == Native.VK_Q) _session.StepUpLevel();
-            else if (vk == Native.VK_NEXT) _session.JumpLevel();
-            else if (vk == Native.VK_G) GhostCurrentWindow();
-            else if (vk == Native.VK_INSERT) ToggleStack();
-        }
-
-        private static bool ModifierHeld()
-        {
-            return (Native.GetAsyncKeyState(Native.VK_SHIFT) & 0x8000) != 0
-                || (Native.GetAsyncKeyState(Native.VK_CONTROL) & 0x8000) != 0
-                || (Native.GetAsyncKeyState(Native.VK_MENU) & 0x8000) != 0
-                || (Native.GetAsyncKeyState(Native.VK_LWIN) & 0x8000) != 0
-                || (Native.GetAsyncKeyState(Native.VK_RWIN) & 0x8000) != 0;
         }
 
         protected override void OnSizeChanged(EventArgs e)
@@ -1039,7 +900,7 @@ namespace FadeAll
 
             if (_lastWindow == IntPtr.Zero || !Native.IsWindow(_lastWindow))
             {
-                _tip.Show("Click a window first, then press G.", this, StatusWidth, Height, 2500);
+                _tip.Show("Click a window first, then use Ghost last window.", this, StatusWidth, Height, 2500);
                 return;
             }
 
@@ -1179,9 +1040,9 @@ namespace FadeAll
             }
 
             if (targets.Count > 9)
-                _tip.Show("Stacked " + placed + " of " + targets.Count + " windows. Press Insert again to unstack.", this, StatusWidth, Height, 3000);
+                _tip.Show("Stacked " + placed + " of " + targets.Count + " windows. Run Stack windows again to unstack.", this, StatusWidth, Height, 3000);
             else
-                _tip.Show("Stacked " + placed + " windows. Press Insert again to unstack.", this, StatusWidth, Height, 3000);
+                _tip.Show("Stacked " + placed + " windows. Run Stack windows again to unstack.", this, StatusWidth, Height, 3000);
         }
 
         private void UnstackWindows()
@@ -1342,38 +1203,33 @@ namespace FadeAll
         private void UpdateToggleText()
         {
             _toggleItem.Text = (_session.IsActive ? "Restore all windows" : "Fade all windows")
-                + " (click pill / Ctrl+Alt+H)";
+                + " (click pill)";
         }
 
         private void ShowHelp()
         {
             string text =
-                "Click the left part of the pill to fade every open window to invisible.\r\n\r\n" +
-                "Keyboard shortcuts (active while FadeAll runs, in every app):\r\n" +
-                "  -  PageUp: step down one level - 100% to 75% to 50% to 25% to hidden, then back to 100%.\r\n" +
-                "  -  PageDown: jump straight between full (100%) and hidden.\r\n" +
-                "  -  Q: step up one level - hidden to 25% to 50% to 75% to 100% - and stops at full.\r\n" +
-                "  -  G: ghost the window you last used - it becomes see-through so you can read what is behind it. Press G again to undo.\r\n" +
-                "  -  Insert: stack your open windows into a 3 x 3 grid - up to 9, most recently used first. Press Insert again to put them back where they were. The pill floats on top of the grid; drag it aside if it covers a window.\r\n" +
-                "  -  FadeAll only listens in the background, so PageUp / PageDown still reach other apps and g / q still type there. The flip side: the action fires at the same time - typing the letter g also ghosts / un-ghosts your last window, and typing q also steps the opacity up (it stops at 100%, so stray q presses cannot hide anything).\r\n" +
-                "  -  Insert is taken over while FadeAll runs - its normal function is off (no overwrite mode), and only the bare key is captured: Ctrl+Insert and Shift+Insert still work in other apps.\r\n" +
-                "  -  Holding Ctrl, Alt, Shift or Windows suppresses the action, so shortcuts like Ctrl+PageUp are left alone.\r\n\r\n" +
-                "Click the Size button on the right to cycle the window you were last using:\r\n" +
-                "  -  First click: 7 x 7 inches.\r\n" +
-                "  -  Second click: 3 x 3 inches (smallest).\r\n" +
-                "  -  Third click: back to full screen.\r\n" +
-                "Then the cycle repeats. Sizes are centered where the window already was.\r\n\r\n" +
+                "Click the left part of the pill to fade every open window out of sight.\r\n\r\n" +
+                "Right-click the pill for the menu - every action below works by clicking it:\r\n" +
+                "  -  Fade all windows / Restore all windows: hide everything or bring it all back.\r\n" +
+                "  -  Cycle window size: 7 x 7 inches, then 3 x 3 inches (smallest), then full screen. Sizes are centered where the window already was, then the cycle repeats.\r\n" +
+                "  -  Step opacity down: 100% to 75% to 50% to 25% to hidden, then back to 100%.\r\n" +
+                "  -  Step opacity up: hidden to 25% to 50% to 75% to 100% - and stops at full, so a stray click cannot hide anything.\r\n" +
+                "  -  Hide / show all: jump straight between full (100%) and hidden.\r\n" +
+                "  -  Ghost last window: the window you last used becomes see-through so you can read what is behind it. Run it again to undo.\r\n" +
+                "  -  Stack windows in a 3 x 3 grid: up to 9 windows, most recently used first. Run it again to put them back where they were. The pill floats on top of the grid; drag it aside if it covers a window.\r\n\r\n" +
+                "Click the Size button on the right of the pill for the same size cycle.\r\n\r\n" +
                 "Drag the grip (the dotted strip on the far right of the pill) to size that window by hand:\r\n" +
                 "  -  Drag right / down to grow it, left / up to shrink it. The top-left corner stays put.\r\n" +
                 "  -  Any width and height you like - about an inch minimum, up to your screen size.\r\n" +
                 "  -  The pill shows the live size while you drag. A plain click on the grip shows this tip.\r\n\r\n" +
                 "While windows are hidden or dimmed:\r\n" +
                 "  -  Hover over the pill to peek - the windows come back while your mouse is on it.\r\n" +
-                "  -  Click the pill or press Ctrl+Alt+H to restore everything (PageDown also toggles hidden / full).\r\n\r\n" +
-                "Drag the pill to move it. Right-click it for this menu.\r\n\r\n" +
+                "  -  Click the pill to restore everything.\r\n\r\n" +
+                "Drag the pill to move it.\r\n\r\n" +
                 "Notes:\r\n" +
                 "  -  Browser tabs live inside one window, so the whole browser window fades together.\r\n" +
-                "  -  The Size button, the grip and G act on the last window you clicked outside the pill (when shrinking, FadeAll pushes past an app's own minimum size; a rare app may still snap itself back).\r\n" +
+                "  -  The Size button, the grip and Ghost last window act on the last window you clicked outside the pill (when shrinking, FadeAll pushes past an app's own minimum size; a rare app may still snap itself back).\r\n" +
                 "  -  Windows from apps running 'as administrator' cannot be faded unless FadeAll also runs as administrator.\r\n" +
                 "  -  Some special windows (Store/UWP apps, full-screen games) may not fade.\r\n" +
                 "  -  Quit with Exit so windows get restored. If the tool is force-killed while windows are hidden, restarting the affected app (or Windows) brings them back.";
